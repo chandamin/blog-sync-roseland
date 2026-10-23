@@ -56,7 +56,7 @@ export default function Journal() {
       </section>
 
       <Form method="post" className="restore-imports"><input type="hidden" name="intent" value="restore"/><button className="secondary-button" disabled={pending}>Re-import deleted posts</button><p>Restore posts from the saved feed that were deleted in Shopify. Existing articles and edits are preserved.</p></Form>
-      <details className="feed-settings"><summary>Journal settings</summary>
+      <details className="feed-settings"><summary>Journal Settings</summary>
         <Form method="post" key={JSON.stringify(settings)} className="settings-form">
           <input type="hidden" name="intent" value="settings"/>
           <label>Journal name<input name="journalName" defaultValue={settings.journalName} maxLength={100} required/></label>
