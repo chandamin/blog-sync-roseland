@@ -63,3 +63,17 @@ name = "Related Journal stories"
 type = "list.article_reference"
 access.admin = "merchant_read_write"
 access.storefront = "public_read"
+
+[metaobjects.app.journal_block.fields.second_text]
+name = "Second column text"
+type = "multi_line_text_field"
+[article.metafields.app.article_design]
+name = "Journal article design"
+type = "single_line_text_field"
+access.admin = "merchant_read_write"
+access.storefront = "public_read"
+[article.metafields.app.content_mode]
+name = "Journal content source"
+type = "single_line_text_field"
+access.admin = "merchant_read_write"
+access.storefront = "public_read"

@@ -1,6 +1,6 @@
 export const operations={
 
- editorialRead:`query JournalEditorial($id:ID!){article(id:$id){blocks:metafield(namespace:"$app",key:"editorial_blocks"){compareDigest references(first:50){nodes{... on Metaobject{fields{key value}}}}} products:metafield(namespace:"$app",key:"related_products"){jsonValue compareDigest} stories:metafield(namespace:"$app",key:"related_stories"){jsonValue compareDigest}}}`,
+ editorialRead:`query JournalEditorial($id:ID!){article(id:$id){design:metafield(namespace:"$app",key:"article_design"){namespace jsonValue compareDigest} contentMode:metafield(namespace:"$app",key:"content_mode"){jsonValue compareDigest} blocks:metafield(namespace:"$app",key:"editorial_blocks"){compareDigest references(first:50){nodes{... on Metaobject{fields{key value}}}}} products:metafield(namespace:"$app",key:"related_products"){jsonValue compareDigest} stories:metafield(namespace:"$app",key:"related_stories"){jsonValue compareDigest}}}`,
  editorialSet:`mutation JournalEditorialSet($metafields:[MetafieldsSetInput!]!){metafieldsSet(metafields:$metafields){metafields{id} userErrors{field message}}}`,
  editorialBlockUpsert:`mutation JournalEditorialBlock($handle:MetaobjectHandleInput!,$metaobject:MetaobjectUpsertInput!){metaobjectUpsert(handle:$handle,metaobject:$metaobject){metaobject{id} userErrors{field message}}}`,
  editorialChoices:`query JournalEditorialChoices{products(first:50){nodes{id title}} articles(first:100){nodes{id title}}}`,

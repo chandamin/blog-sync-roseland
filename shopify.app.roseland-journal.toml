@@ -1,22 +1,22 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "2366e8ad6f2364ef511d0a1f408d54f2"
+client_id = "f7b6d57b39abf4c9ce75e10497c7b571"
 application_url = "https://your-app.example.com"
 embedded = true
-name = "Roseland journal"
+name = "Roseland Journal"
+
+[webhooks]
+api_version = "2027-01"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "read_content,write_content,read_metaobjects,write_metaobjects,read_products"
+scopes = "read_content,read_metaobjects,read_products,write_content,write_metaobjects"
 
 [auth]
 redirect_urls = [
   "https://your-app.example.com/auth/callback",
   "https://your-app.example.com/auth/shopify/callback"
 ]
-
-[webhooks]
-api_version = "2027-01"
 
 [build]
 include_config_on_deploy = true
@@ -69,5 +69,19 @@ access.storefront = "public_read"
 [article.metafields.app.related_stories]
 name = "Related Journal stories"
 type = "list.article_reference"
+access.admin = "merchant_read_write"
+access.storefront = "public_read"
+
+[metaobjects.app.journal_block.fields.second_text]
+name = "Second column text"
+type = "multi_line_text_field"
+[article.metafields.app.article_design]
+name = "Journal article design"
+type = "single_line_text_field"
+access.admin = "merchant_read_write"
+access.storefront = "public_read"
+[article.metafields.app.content_mode]
+name = "Journal content source"
+type = "single_line_text_field"
 access.admin = "merchant_read_write"
 access.storefront = "public_read"

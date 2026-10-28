@@ -11,7 +11,7 @@ Copy these local files into matching paths in an unpublished copy of the Shopify
 - `theme/templates/page.journal-landing.json`
 - `theme/templates/blog.journal.json`
 - `theme/templates/article.journal.json`
- 
+
 The file paths inside the theme omit the initial `theme/` directory. No theme files were uploaded automatically. The old `journal-index.liquid` is no longer used by the updated blog template and can remain without affecting the new template.
 
 ## Assign and preview
@@ -35,7 +35,7 @@ The scheduled sync requires the hosted worker described below. Theme installatio
 
 In the app, open **Art direction → Structured editorial content**. Add and reorder text, image, wide-image, two-image, image/text and pull-quote blocks. Select related products and Journal stories, then save. The article template reads the public app-owned metafields and metaobjects and displays this content after the native body. Configure its optional headings and visibility in the article section settings. These data additions do not replace or rewrite existing body HTML.
 
-The article namespace defaults to `app--437612380161`, matching the currently connected app. New app installations under a different app ID need the resolved namespace set once in **Journal article → Editorial metafield namespace**. The definitions and product/metaobject scopes must already have been applied to the development store through Shopify CLI.
+The article namespace defaults to `app--440567988225`, matching the currently connected app. New app installations under a different app ID need the resolved namespace set once in **Journal article → Editorial metafield namespace**. The definitions and product/metaobject scopes must already have been applied to the development store through Shopify CLI.
 
 ## Check the RSS workflow
 

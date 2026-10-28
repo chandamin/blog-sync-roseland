@@ -1,11 +1,24 @@
 {% liquid
+  assign editorial_namespace = section.settings.editorial_namespace | default: 'app--440567988225'
+  if article.metafields[editorial_namespace].article_design == blank and article.metafields['app--440567988225'].article_design != blank
+    assign editorial_namespace = 'app--440567988225'
+  endif
+  assign article_design = article.metafields[editorial_namespace].article_design.value | default: 'standard'
+  if article_design != 'custom'
+    assign article_design = 'standard'
+  endif
+  assign content_mode = article.metafields[editorial_namespace].content_mode.value | default: 'append'
   assign journal_back_url = section.settings.back_url | default: blog.url
-  assign editorial_blocks = article.metafields[section.settings.editorial_namespace].editorial_blocks.value
-  assign related_products = article.metafields[section.settings.editorial_namespace].related_products.value
-  assign related_stories = article.metafields[section.settings.editorial_namespace].related_stories.value
+  assign editorial_blocks = article.metafields[editorial_namespace].editorial_blocks.value
+  assign related_products = article.metafields[editorial_namespace].related_products.value
+  assign related_stories = article.metafields[editorial_namespace].related_stories.value
 %}
-<article class="ro-article journal-article-page" style="--ra-paper: {{ section.settings.background }}; --ra-ink: {{ section.settings.text_color }}; --ra-heading: {{ section.settings.heading_color }}; --ra-body-width: {{ section.settings.body_width }}px; --ra-body-size: {{ section.settings.body_size }}px; --ra-title-size: {{ section.settings.title_size }}px;">
+<article data-journal-design="{{ article_design }}" data-editorial-namespace="{{ editorial_namespace | escape }}" class="ro-article journal-article-page{% if article_design == 'custom' %} ro-article--custom{% else %} ro-article--standard{% endif %}" style="--ra-paper: {{ section.settings.background }}; --ra-ink: {{ section.settings.text_color }}; --ra-heading: {{ section.settings.heading_color }}; --ra-body-width: {{ section.settings.body_width }}px; --ra-body-size: {{ section.settings.body_size }}px; --ra-title-size: {{ section.settings.title_size }}px;">
   <div class="ro-article__inner">
+    {% if request.design_mode %}
+      <p class="ro-article__editor-status">Article design: {% if article_design == 'custom' %}2 — Custom{% else %}1 — Standard{% endif %}. Content: {{ content_mode | escape }}. Namespace: {{ editorial_namespace | escape }}.</p>
+      {% if article.metafields[editorial_namespace].article_design == blank %}<p class="ro-article__editor-status">No saved design found. Save the design in the app and verify the Editorial metafield namespace matches this app installation.</p>{% endif %}
+    {% endif %}
     <header class="ro-article__header">
       <a class="ro-article__journal" href="{{ journal_back_url }}">{{ blog.title | default: 'Journal' | escape }}</a>
       {% if section.settings.show_date %}<time class="ro-article__date" datetime="{{ article.published_at | date: '%Y-%m-%d' }}">{{ article.published_at | date: '%B %d, %Y' }}</time>{% endif %}
@@ -18,20 +31,28 @@
         </div>
       {% endif %}
     </header>
-    {% if section.settings.show_featured_image and article.image %}
+    {% assign show_hero = section.settings.show_featured_image %}
+    {% if article_design == 'custom' and section.settings.custom_featured_image and content_mode != 'sections' %}{% assign show_hero = true %}{% endif %}
+    {% if content_mode == 'sections' and editorial_blocks != blank and section.settings.show_editorial %}{% assign show_hero = false %}{% endif %}
+    {% if article.content contains '<img' and content_mode != 'sections' %}{% assign show_hero = false %}{% endif %}
+    {% if show_hero and article.image %}
       <figure class="ro-article__hero">
         {{ article.image | image_url: width: 2200 | image_tag: widths: '480, 720, 1080, 1440, 1800, 2200', sizes: '(min-width: 1240px) 1120px, 94vw', loading: 'eager', fetchpriority: 'high', alt: article.image.alt }}
         {% if section.settings.show_image_caption and article.image.alt != blank %}<figcaption>{{ article.image.alt | escape }}</figcaption>{% endif %}
       </figure>
     {% endif %}
-    <div class="ro-article__body journal-body">{{ article.content }}</div>
-    {% if section.settings.show_editorial and editorial_blocks != blank %}
+    {% assign show_original_body = true %}
+    {% if content_mode == 'sections' and section.settings.show_editorial and editorial_blocks != blank %}{% assign show_original_body = false %}{% endif %}
+    {% if show_original_body %}<div class="ro-article__body journal-body" data-journal-native-body data-auto-layout="{{ section.settings.auto_layout }}">{{ article.content }}</div>{% endif %}
+    {% if content_mode != 'original' and section.settings.show_editorial and editorial_blocks != blank %}
       <div class="ro-article__body ro-editorial">
         {% for editorial in editorial_blocks limit: 50 %}
           {% assign editorial_layout = editorial.layout.value %}
           {% case editorial_layout %}
             {% when 'text' %}
               {% if editorial.text.value != blank %}<div class="ro-editorial__text">{{ editorial.text.value | escape | newline_to_br }}</div>{% endif %}
+            {% when 'two_columns' %}
+              <div class="ro-editorial__columns"><div>{{ editorial.text.value | escape | newline_to_br }}</div><div>{{ editorial.second_text.value | escape | newline_to_br }}</div></div>
             {% when 'pull_quote' %}
               {% if editorial.text.value != blank %}<blockquote>{{ editorial.text.value | escape | newline_to_br }}</blockquote>{% endif %}
             {% when 'image', 'wide_image', 'two_images', 'image_text' %}
@@ -75,35 +96,153 @@
   </div>
 </article>
 {% stylesheet %}
-.ro-article{background:var(--ra-paper);color:var(--ra-ink);padding:34px 28px 72px}.ro-article *{box-sizing:border-box}.ro-article__inner{max-width:1120px;margin:0 auto}.ro-article a{color:var(--ra-heading);text-underline-offset:4px}.ro-article a:focus-visible{outline:2px solid currentColor;outline-offset:5px}.ro-article__back{display:inline-flex;gap:10px;align-items:center;font-size:12px;line-height:1.5;text-decoration:none}.ro-article__back:hover{text-decoration:underline}.ro-article__header{max-width:880px;margin:42px auto 38px;text-align:center}.ro-article__categories{font:italic 13px/1.5 Georgia,"Times New Roman",serif;color:var(--ra-heading);margin:0 0 14px}.ro-article h1{font-family:var(--font-heading-family,Georgia,"Times New Roman",serif);font-weight:400;font-size:var(--ra-title-size);line-height:1.12;letter-spacing:-.025em;color:var(--ra-heading);margin:0;text-wrap:balance}.ro-article__excerpt{max-width:620px;margin:20px auto 0;font-family:Georgia,"Times New Roman",serif;font-size:18px;line-height:1.6;color:var(--ra-heading)}.ro-article__excerpt p{margin:0}.ro-article__meta{display:flex;align-items:center;justify-content:center;gap:10px 22px;flex-wrap:wrap;margin-top:20px;font-size:11px;letter-spacing:.04em;opacity:.65}.ro-article__hero{margin:0 0 44px}.ro-article__hero img{display:block;width:100%;height:auto;max-height:760px;object-fit:contain}.ro-article figcaption{font-size:12px;line-height:1.6;color:var(--ra-heading);margin-top:10px;text-align:center}.ro-article__body{font-size:var(--ra-body-size);line-height:1.85;overflow-wrap:anywhere}.ro-article__body>p,.ro-article__body>h2,.ro-article__body>h3,.ro-article__body>h4,.ro-article__body>ul,.ro-article__body>ol,.ro-article__body>table{max-width:var(--ra-body-width);margin-left:auto;margin-right:auto}.ro-article__body p{margin-top:0;margin-bottom:1.3em}.ro-article__body h2,.ro-article__body h3,.ro-article__body h4{font-family:var(--font-heading-family,Georgia,"Times New Roman",serif);font-weight:400;color:var(--ra-heading);line-height:1.3;margin-top:2em;margin-bottom:.7em}.ro-article__body h2{font-size:1.7em}.ro-article__body h3{font-size:1.35em}.ro-article__body img{display:block;max-width:100%;height:auto}.ro-article__body figure{max-width:var(--ra-body-width);margin:36px auto}.ro-article__body figure img{width:100%}.ro-article__body picture{display:block}.ro-article__body .captioned-image-container{margin:36px 0}.ro-article__body .captioned-image-container figure{margin-top:0;margin-bottom:0}.ro-article__body blockquote{max-width:850px;margin:50px auto;padding:0 24px;border:0;text-align:center;color:var(--ra-heading);font-family:Georgia,"Times New Roman",serif;font-size:clamp(24px,3vw,36px);line-height:1.45;font-style:italic}.ro-article__body blockquote p{margin:0}.ro-article__body .journal-wide{max-width:1120px}.ro-article__body .journal-pair,.ro-article__body .journal-image-text,.ro-article__body .journal-related{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px;max-width:1120px;margin:40px auto}.ro-article__body .journal-pair figure,.ro-article__body .journal-image-text figure{margin:0;max-width:none}.ro-article__body .journal-image-text{align-items:center}.ro-article__body .journal-image-text>div{padding:12px 20px}.ro-article__body .journal-related{font-size:16px;border-top:1px solid color-mix(in srgb,var(--ra-ink) 18%,transparent);padding-top:24px}.ro-article__body table{display:block;overflow:auto;max-width:100%}.ro-article__body iframe,.ro-article__body video{max-width:100%}.ro-article__footer{margin:56px auto 0;max-width:var(--ra-body-width)}.ro-article__navigation{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:36px;border-top:1px solid color-mix(in srgb,var(--ra-ink) 20%,transparent);margin-top:28px;padding-top:24px}.ro-article__navigation>div:last-child{text-align:right}.ro-article__navigation a{text-decoration:none;font-family:Georgia,"Times New Roman",serif;font-size:19px;line-height:1.4}.ro-article__navigation a:hover>span:last-child{text-decoration:underline}.ro-article__nav-label{display:block;font-family:inherit;font-size:11px;opacity:.65;margin-bottom:8px}@media(max-width:749px){.ro-article{padding:24px 20px 44px}.ro-article__header{margin:32px auto 28px}.ro-article h1{font-size:clamp(30px,7vw,var(--ra-title-size));line-height:1.16}.ro-article__excerpt{font-size:16px;margin-top:16px}.ro-article__meta{margin-top:16px;font-size:10px}.ro-article__hero{margin-bottom:30px}.ro-article__body{font-size:clamp(15px,var(--ra-body-size),18px);line-height:1.8}.ro-article__body figure,.ro-article__body .captioned-image-container{margin:28px auto}.ro-article__body .journal-pair,.ro-article__body .journal-image-text,.ro-article__body .journal-related{grid-template-columns:1fr;gap:24px}.ro-article__body .journal-image-text>div{padding:0}.ro-article__body blockquote{padding:0;margin:36px auto}.ro-article__navigation{gap:20px}.ro-article__navigation a{font-size:16px}.ro-article__footer{margin-top:40px}}
-.ro-editorial{margin-top:40px}.ro-editorial__text{max-width:var(--ra-body-width);margin:28px auto}.ro-editorial__images{margin:36px auto}.ro-editorial__images:not(.journal-wide):not(.journal-pair):not(.journal-image-text){max-width:var(--ra-body-width)}.ro-editorial__images img{height:auto}.ro-article__related{border-top:1px solid color-mix(in srgb,var(--ra-ink) 18%,transparent);padding-top:32px;margin-top:48px}.ro-article__related>h2{font:400 28px/1.3 Georgia,"Times New Roman",serif;color:var(--ra-heading);margin:0 0 24px}.ro-article__related-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}.ro-article__related-grid a{text-decoration:none}.ro-article__related-grid img{width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;display:block}.ro-article__related-grid h3{font:400 19px/1.4 Georgia,"Times New Roman",serif;margin:14px 0 0}.ro-article__related-grid a:hover h3{text-decoration:underline}@media(max-width:749px){.ro-article__related-grid{grid-template-columns:1fr;gap:28px}}
-/* Editorial proportions from the supplied Journal reference. */
-.ro-article{padding:42px 28px 64px;font-family:Georgia,"Times New Roman",serif}.ro-article__inner{max-width:1040px}.ro-article__header{max-width:700px;margin:0 auto 64px}.ro-article__journal{display:inline-block;font-size:42px;font-weight:400;line-height:1.2;text-decoration:none}.ro-article__date{display:block;font-size:13px;line-height:1.5;margin:16px 0}.ro-article h1{font-family:Georgia,"Times New Roman",serif;font-size:var(--ra-title-size);line-height:1.35;letter-spacing:0;color:var(--ra-ink)}.ro-article__categories{margin:10px 0 0;font-size:13px;color:var(--ra-ink)}.ro-article__body{font-family:Georgia,"Times New Roman",serif;line-height:1.6}.ro-article__body>div:not(.captioned-image-container):not(.journal-wide):not(.journal-pair):not(.journal-image-text):not(.ro-editorial__images){max-width:var(--ra-body-width);margin-left:auto;margin-right:auto}.ro-article__body figure,.ro-article__body .captioned-image-container{max-width:100%;margin:40px auto}.ro-article__body .captioned-image-container figure{margin:0}.ro-article__body p:has(img),.ro-article__body p:has(picture){max-width:100%;margin:40px auto}.ro-article__body img{margin-left:auto;margin-right:auto}.ro-article figcaption,.ro-article__body .image-caption{font-family:Arial,sans-serif;font-size:10px;line-height:1.5;text-align:left;text-transform:uppercase;letter-spacing:.04em;margin-top:9px;color:var(--ra-ink)}.ro-article__body .journal-wide{max-width:100%}.ro-article__body .journal-pair,.ro-article__body .journal-image-text{gap:24px}.ro-article__body .journal-pair figure,.ro-article__body .journal-image-text figure{margin:0}.ro-article__body .journal-image-text{align-items:start}.ro-article__body blockquote{max-width:var(--ra-body-width);font-size:28px;line-height:1.5}.ro-article__body .journal-image-text>div{padding:0 12px}@media(max-width:749px){.ro-article{padding:30px 20px 44px}.ro-article__journal{font-size:32px}.ro-article__header{margin:0 auto 42px}.ro-article h1{font-size:clamp(22px,5vw,var(--ra-title-size))}.ro-article__date{font-size:12px;margin:12px 0}.ro-article__body figure,.ro-article__body .captioned-image-container,.ro-article__body p:has(img){margin:28px auto}.ro-article__body .journal-pair figure,.ro-article__body .journal-image-text figure{margin:0}.ro-article__body .journal-image-text>div{padding:0}}
-
-/* Inner article styles are separate from the Journal listing. */
-.journal-article-page{width:100%;max-width:100%;min-width:0}
-.journal-article-page .ro-article__inner{max-width:1120px;min-width:0}
-.journal-article-page .ro-article__header{margin-bottom:30px}
-.journal-article-page .ro-article__hero{max-width:1120px;margin:0 auto 40px}
-.journal-article-page .ro-article__hero img{max-height:none;object-fit:contain}
-.journal-article-page .ro-article__body figure,.journal-article-page .ro-article__body .captioned-image-container,.journal-article-page .ro-article__body p:has(img){max-width:930px;margin:40px auto}
-.journal-article-page .ro-article__body .captioned-image-container figure{margin:0;max-width:100%}
-.journal-article-page .ro-article__body .journal-wide{max-width:1120px}
-.journal-article-page .ro-article__body .journal-pair{max-width:930px;gap:24px}
-.journal-article-page .ro-article__body .journal-pair figure{max-width:100%;margin:0;min-width:0}
-.journal-article-page .ro-article__body .journal-pair img{width:100%;aspect-ratio:1/1;object-fit:cover}
-.journal-article-page .ro-article__body .journal-image-text{max-width:var(--ra-body-width);grid-template-columns:repeat(2,minmax(0,1fr));gap:28px;align-items:start}
-.journal-article-page .ro-article__body .journal-image-text figure{grid-column:2;grid-row:1;margin:0;min-width:0}
-.journal-article-page .ro-article__body .journal-image-text>div{grid-column:1;grid-row:1;padding:0;min-width:0}
-.journal-article-page .ro-article__body .journal-image-text p{margin-top:0}
-.journal-article-page .ro-article__body blockquote{max-width:var(--ra-body-width);margin:44px auto;font-weight:400;font-size:28px;line-height:1.45}
-.journal-article-page .ro-article__body figcaption{font-size:10px;line-height:1.5;text-align:left}
-@media(max-width:749px){.journal-article-page .ro-article__body .journal-image-text{grid-template-columns:1fr;gap:22px}.journal-article-page .ro-article__body .journal-image-text>div{grid-column:1;grid-row:1}.journal-article-page .ro-article__body .journal-image-text figure{grid-column:1;grid-row:2}.journal-article-page .ro-article__body .journal-pair{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.journal-article-page .ro-article__body figure,.journal-article-page .ro-article__body .captioned-image-container,.journal-article-page .ro-article__body p:has(img){margin:28px auto}.journal-article-page .ro-article__body .journal-pair figure,.journal-article-page .ro-article__body .journal-image-text figure{margin:0}.journal-article-page .ro-article__body blockquote{font-size:23px}}
+.ro-article{--ra-media-width:930px;--ra-reading-width:var(--ra-body-width);background:var(--ra-paper);color:var(--ra-ink);padding:44px 28px 36px;font-family:Georgia,"Times New Roman",serif;font-weight:400}
+.ro-article *{box-sizing:border-box}
+.ro-article__inner{max-width:1120px;margin:auto;min-width:0}
+.ro-article a{color:inherit;text-underline-offset:3px}
+.ro-article a:focus-visible{outline:2px solid currentColor;outline-offset:4px}
+.ro-article__header{text-align:center;margin:0 auto 70px;max-width:700px}
+.ro-article__journal{font-family:Georgia,"Times New Roman",serif;font-size:42px;line-height:1.25;text-decoration:none;color:var(--ra-heading)!important}
+.ro-article__date{display:block;font-size:14px;line-height:1.5;margin:14px 0 16px;color:var(--ra-heading)}
+.ro-article h1{font-family:Georgia,"Times New Roman",serif;font-size:var(--ra-title-size);line-height:1.4;font-weight:400;margin:0;color:var(--ra-heading);letter-spacing:0;text-wrap:balance}
+.ro-article__categories{font-size:14px;font-style:italic;margin:12px 0 0;line-height:1.5}
+.ro-article__excerpt{font-size:18px;line-height:1.6;margin:20px auto 0}
+.ro-article__meta{font-size:13px;margin-top:16px}
+.ro-article__hero{max-width:var(--ra-media-width);margin:0 auto 36px}
+.ro-article__hero img{display:block;width:100%;height:auto}
+.ro-article__body{font-size:var(--ra-body-size);line-height:1.45;overflow-wrap:anywhere}
+.ro-article__body>p,.ro-article__body>h2,.ro-article__body>h3,.ro-article__body>h4,.ro-article__body>ul,.ro-article__body>ol,.ro-article__body>div{max-width:var(--ra-reading-width);margin-left:auto;margin-right:auto}
+.ro-article__body p{margin-top:0;margin-bottom:1.35em}
+.ro-article__body h2,.ro-article__body h3,.ro-article__body h4{font-family:Georgia,"Times New Roman",serif;font-weight:400;line-height:1.3;margin-top:1.8em;margin-bottom:.7em}
+.ro-article__body img{display:block;max-width:100%;height:auto;margin:auto}
+.ro-article__body figure,.ro-article__body .captioned-image-container,.ro-article__body p:has(img),.ro-article__body p:has(picture){width:100%;max-width:var(--ra-media-width);margin:30px auto 12px}
+.ro-article__body figure img{width:100%}
+.ro-article__body .captioned-image-container figure{margin:0;max-width:100%}
+.ro-article figcaption,.ro-article .image-caption{font:10px/1.5 Arial,sans-serif;letter-spacing:.015em;text-transform:uppercase;text-align:left;margin-top:7px}
+.ro-article__body .ro-editorial__text{max-width:var(--ra-reading-width);margin:30px auto}
+.ro-article__body .ro-editorial__images{max-width:var(--ra-media-width);margin:24px auto 14px}
+.ro-article__body .ro-editorial__images>figure{margin:0;max-width:100%}
+.ro-article__body .journal-wide{max-width:1120px}
+.ro-article__body .journal-pair,.ro-article__body .journal-image-text,.ro-article__body .ro-editorial__columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;max-width:var(--ra-media-width);margin:24px auto}
+.ro-article__body .journal-pair figure{margin:0;max-width:100%;min-width:0}
+.ro-article__body .journal-pair>.captioned-image-container{margin:0;max-width:none;min-width:0}
+.ro-article__body .journal-pair img{width:100%;aspect-ratio:1;object-fit:cover}
+.ro-article__body .journal-image-text{max-width:var(--ra-reading-width);align-items:start;gap:30px;margin:40px auto}
+.ro-article__body .journal-image-text>figure,.ro-article__body .journal-image-text>.captioned-image-container{grid-column:2;grid-row:1;margin:0;min-width:0}
+.ro-article__body .journal-image-text>div:not(.captioned-image-container){grid-column:1;grid-row:1;min-width:0}
+.ro-article__body .ro-editorial__columns{max-width:var(--ra-reading-width);gap:30px}
+.ro-editorial__columns>div{min-width:0}
+.ro-article__body blockquote{max-width:var(--ra-reading-width);font-family:Georgia,"Times New Roman",serif;font-size:26px;font-style:italic;font-weight:400;line-height:1.35;text-align:center;margin:44px auto 30px;padding:0 20px;border:0;color:var(--ra-ink)}
+.ro-article__body blockquote p{margin:0}
+.ro-article__body table{display:block;overflow:auto;max-width:100%}
+.ro-article__body iframe,.ro-article__body video{max-width:100%}
+.ro-article__footer{max-width:var(--ra-reading-width);margin:50px auto 0;font-size:14px;line-height:1.5}
+.ro-article__back{text-decoration:none}
+.ro-article__navigation{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;border-top:1px solid color-mix(in srgb,var(--ra-ink) 20%,transparent);margin-top:24px;padding-top:20px}
+.ro-article__navigation>div:last-child{text-align:right}
+.ro-article__navigation a{text-decoration:none}
+.ro-article__nav-label{display:block;font-size:11px;margin-bottom:8px}
+.ro-article__related{max-width:var(--ra-media-width);margin:48px auto 0;border-top:1px solid color-mix(in srgb,var(--ra-ink) 20%,transparent);padding-top:28px}
+.ro-article__related h2{font-size:24px;font-weight:400}
+.ro-article__related-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
+.ro-article__related-grid img{width:100%;height:auto;aspect-ratio:4/3;object-fit:cover}
+.ro-article__related-grid h3{font-size:18px;font-weight:400;line-height:1.4}
+.ro-article__related-grid a{text-decoration:none}
+.ro-article__body .journal-native-hero{max-width:1120px;margin:0 auto 40px}
+.ro-article__body .journal-native-hero img{aspect-ratio:2/1;object-fit:cover}
+.ro-article__body .journal-image-text figure,.ro-article__body .journal-image-text .captioned-image-container{margin:0;max-width:none}
+.ro-article__body .journal-image-text>.journal-native-text p:last-child{margin-bottom:0}
+.ro-article__body .journal-image-text img{width:100%;height:auto}
+.ro-article__body .image-link-expand{display:none}
+.ro-article--custom .ro-article__header{margin-bottom:32px}
+.ro-article--custom .ro-article__hero{max-width:1120px;margin-bottom:40px}
+.ro-article__editor-status{font:13px/1.5 Arial,sans-serif;padding:12px;background:#fff;border:1px solid #ccc;color:#333}
+@media(max-width:749px){
+.ro-article{padding:30px 20px}
+.ro-article__header{margin-bottom:42px}
+.ro-article__journal{font-size:32px}
+.ro-article h1{font-size:clamp(22px,5vw,var(--ra-title-size))}
+.ro-article__date{font-size:12px;margin:10px 0}
+.ro-article__body{font-size:clamp(15px,var(--ra-body-size),18px);line-height:1.55}
+.ro-article__body .journal-pair{gap:12px}
+.ro-article__body .journal-image-text,.ro-article__body .ro-editorial__columns{grid-template-columns:1fr;gap:20px}
+.ro-article__body .journal-image-text>div:not(.captioned-image-container){grid-column:1;grid-row:1}
+.ro-article__body .journal-image-text>figure,.ro-article__body .journal-image-text>.captioned-image-container{grid-column:1;grid-row:2}
+.ro-article__body blockquote{font-size:23px;padding:0;margin:32px auto}
+.ro-article__related-grid{grid-template-columns:1fr}
+}
 {% endstylesheet %}
+{% javascript %}
+(() => {
+  const isMedia = element => element && !element.matches('.journal-pair,.journal-image-text,.journal-wide') && (element.matches('figure,.captioned-image-container') || element.matches('p') && element.querySelector('img')) && element.querySelectorAll('img').length === 1;
+  function arrange(article) {
+    const body = article.querySelector('[data-journal-native-body]');
+    if (!body || body.dataset.autoLayout === 'false' || body.dataset.layoutApplied === 'true') return;
+    body.dataset.layoutApplied = 'true';
+    const custom = article.dataset.journalDesign === 'custom';
+    if (custom) {
+      const first = body.firstElementChild;
+      if (isMedia(first)) first.classList.add('journal-wide', 'journal-native-hero');
+      for (const paragraph of Array.from(body.children)) {
+        if (!paragraph.matches('p') || !paragraph.querySelector('em,i') || paragraph.querySelector('img')) continue;
+        const value = paragraph.textContent.trim();
+        if (!/^[“"‘]/.test(value) || !/[”"’][.!?]?$/.test(value)) continue;
+        const quote = document.createElement('blockquote');
+        paragraph.replaceWith(quote);
+        quote.append(paragraph);
+      }
+      for (const quote of Array.from(body.children).filter(element => element.matches('blockquote'))) {
+        const image = quote.previousElementSibling;
+        if (!isMedia(image)) continue;
+        const paragraphs = [];
+        let previous = image.previousElementSibling;
+        while (previous && previous.matches('p') && !previous.querySelector('img')) {
+          paragraphs.unshift(previous);
+          previous = previous.previousElementSibling;
+        }
+        if (!paragraphs.length) continue;
+        const row = document.createElement('div');
+        row.className = 'journal-image-text';
+        const copy = document.createElement('div');
+        copy.className = 'journal-native-text';
+        paragraphs[0].before(row);
+        row.append(copy);
+        paragraphs.forEach(paragraph => copy.append(paragraph));
+        row.append(image);
+      }
+    }
+    const children = Array.from(body.children);
+    for (let index = 0; index < children.length; index++) {
+      if (!isMedia(children[index])) continue;
+      const run = [];
+      while (index < children.length && isMedia(children[index])) run.push(children[index++]);
+      index--;
+      const start = run.length > 2 ? 1 : 0;
+      for (let offset = start; offset + 1 < run.length; offset += 2) {
+        const pair = document.createElement('div');
+        pair.className = 'journal-pair';
+        run[offset].before(pair);
+        pair.append(run[offset], run[offset + 1]);
+      }
+    }
+  }
+  const initialize = scope => scope.querySelectorAll('[data-journal-design]').forEach(arrange);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => initialize(document));
+  else initialize(document);
+  document.addEventListener('shopify:section:load', event => initialize(event.target));
+})();
+{% endjavascript %}
 {% schema %}
 {
   "name": "Journal article",
   "settings": [
+    {
+      "type": "checkbox",
+      "id": "auto_layout",
+      "label": "Arrange imported article images and quotes",
+      "default": true,
+      "info": "Pairs adjacent photos. In Custom, expands the opening image and places text beside the image before a quote. Existing section layouts stay unchanged."
+    },
     {
       "type": "url",
       "id": "back_url",
@@ -145,6 +284,13 @@
       "id": "show_featured_image",
       "label": "Show featured image",
       "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "custom_featured_image",
+      "label": "Show featured image in Design 2",
+      "default": true,
+      "info": "Custom articles open with a wide hero, even when the standard featured image is hidden. Turn off if the body already starts with the same image."
     },
     {
       "type": "checkbox",
@@ -197,7 +343,7 @@
       "min": 22,
       "max": 72,
       "step": 2,
-      "default": 54,
+      "default": 28,
       "unit": "px"
     },
     {
@@ -210,7 +356,7 @@
       "type": "color",
       "id": "text_color",
       "label": "Body text",
-      "default": "#30382F"
+      "default": "#72736B"
     },
     {
       "type": "color",
@@ -226,13 +372,13 @@
       "type": "text",
       "id": "editorial_namespace",
       "label": "Editorial metafield namespace",
-      "default": "app--437612380161",
-      "info": "App-owned namespace for this Roseland app installation."
+      "default": "app--440567988225",
+      "info": "Must match the namespace shown in the app editor. Current Roseland app: app--440567988225."
     },
     {
       "type": "checkbox",
       "id": "show_editorial",
-      "label": "Show saved editorial blocks after the body",
+      "label": "Show saved editorial sections",
       "default": true
     },
     {

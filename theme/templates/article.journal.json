@@ -10,7 +10,10 @@
         "body_size": 18,
         "background": "#FAF9F5",
         "text_color": "#72736B",
-        "heading_color": "#667776"
+        "heading_color": "#667776",
+        "editorial_namespace": "app--440567988225",
+        "auto_layout": true,
+        "show_navigation": false
       }
     }
   },
